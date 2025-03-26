@@ -1,69 +1,99 @@
-# Welcome to your Lovable project
 
-## Project info
+# MiniDex - Minimalist Decentralized Exchange
 
-**URL**: https://lovable.dev/projects/341944cc-a39f-434b-ae78-63d390a675db
+A simple yet powerful Automated Market Maker (AMM) decentralized exchange built with Solidity and Foundry.
 
-## How can I edit this code?
+## Features
 
-There are several ways of editing your application.
+- Constant product AMM (x * y = k) similar to Uniswap V2
+- Create liquidity pools for any ERC20 token pair
+- Add and remove liquidity from pools
+- Swap tokens with minimal slippage
+- LP tokens to represent liquidity shares
+- Factory contract to deploy multiple pools
+- Support for multi-pool arbitrage
 
-**Use Lovable**
+## Getting Started
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/341944cc-a39f-434b-ae78-63d390a675db) and start prompting.
+### Prerequisites
 
-Changes made via Lovable will be committed automatically to this repo.
+- [Foundry](https://book.getfoundry.sh/getting-started/installation)
 
-**Use your preferred IDE**
+### Building
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```bash
+forge build
 ```
 
-**Edit a file directly in GitHub**
+### Testing
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```bash
+forge test -vv
+```
 
-**Use GitHub Codespaces**
+## Contract Architecture
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+- `MiniDexFactory.sol`: Creates new liquidity pairs and manages pair registry
+- `MiniDexPair.sol`: Handles pool reserves, swaps, and liquidity operations
+- `MiniDexERC20.sol`: LP token implementation for pool shares
+- `Router.sol`: User-facing contract for liquidity and swap operations
+- `Math.sol`: Math utilities for the protocol
 
-## What technologies are used for this project?
+## Usage Examples
 
-This project is built with .
+### Creating a Pair
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+```solidity
+// Create a new trading pair
+factory.createPair(address(tokenA), address(tokenB));
+```
 
-## How can I deploy this project?
+### Adding Liquidity
 
-Simply open [Lovable](https://lovable.dev/projects/341944cc-a39f-434b-ae78-63d390a675db) and click on Share -> Publish.
+```solidity
+// Approve router to spend tokens
+tokenA.approve(address(router), amountA);
+tokenB.approve(address(router), amountB);
 
-## I want to use a custom domain - is that possible?
+// Add liquidity
+router.addLiquidity(
+    address(tokenA),
+    address(tokenB),
+    amountA,
+    amountB,
+    amountAMin,
+    amountBMin,
+    to,
+    deadline
+);
+```
 
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+### Swapping Tokens
+
+```solidity
+// Create the path for swapping
+address[] memory path = new address[](2);
+path[0] = address(tokenA);
+path[1] = address(tokenB);
+
+// Execute the swap
+router.swapExactTokensForTokens(
+    amountIn,
+    amountOutMin,
+    path,
+    to,
+    deadline
+);
+```
+
+## Extending the Protocol
+
+The protocol is designed to be easily extendable:
+
+1. Create new token pairs through the factory
+2. Build arbitrage strategies across multiple pools
+3. Add new router contracts for specialized swap types
+
+## Disclaimer
+
+This is a simplified implementation for educational purposes. It has not been audited and should not be used in production without proper security review.
