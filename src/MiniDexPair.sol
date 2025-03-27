@@ -75,7 +75,7 @@ contract MiniDexPair is MiniDexERC20 {
         uint256 amount1 = balance1 - _reserve1;
         
         bool feeOn = _mintFee(_reserve0, _reserve1);
-        uint256 _totalSupply = totalSupply();
+        uint256 _totalSupply = totalSupply; // Fix: use the state variable directly, not as a function
         
         if (_totalSupply == 0) {
             liquidity = Math.sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY;
@@ -100,10 +100,10 @@ contract MiniDexPair is MiniDexERC20 {
         address _token1 = token1;
         uint256 balance0 = IERC20(_token0).balanceOf(address(this));
         uint256 balance1 = IERC20(_token1).balanceOf(address(this));
-        uint256 liquidity = balanceOf(address(this));
+        uint256 liquidity = balanceOf[address(this)];
         
         bool feeOn = _mintFee(_reserve0, _reserve1);
-        uint256 _totalSupply = totalSupply();
+        uint256 _totalSupply = totalSupply; // Fix: use the state variable directly, not as a function
         
         amount0 = (liquidity * balance0) / _totalSupply;
         amount1 = (liquidity * balance1) / _totalSupply;
