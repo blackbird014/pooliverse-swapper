@@ -80,14 +80,15 @@ export const Web3Provider = ({ children }: { children: ReactNode }) => {
         }
       });
 
-      window.ethereum.on('chainChanged', (chainId: string) => {
+      window.ethereum.on('chainChanged', (_chainId: string) => {
         window.location.reload();
       });
     }
 
     return () => {
       if (window.ethereum) {
-        window.ethereum.removeAllListeners();
+        window.ethereum.removeAllListeners('accountsChanged');
+        window.ethereum.removeAllListeners('chainChanged');
       }
     };
   }, []);
