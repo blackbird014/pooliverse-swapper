@@ -1,4 +1,3 @@
-
 # MiniDex - Minimalist Decentralized Exchange
 
 A simple yet powerful Automated Market Maker (AMM) decentralized exchange built with Solidity and Foundry.
@@ -37,15 +36,17 @@ The project includes a React-based frontend for interacting with the MiniDex pro
 
 ### Setting Up the Frontend
 
-1. Install dependencies:
+1. Install project dependencies:
 ```bash
 npm install
 ```
+This will install all required packages defined in package.json, including React, UI components, and development tools.
 
 2. Start the development server:
 ```bash
 npm run dev
 ```
+This will start the Vite development server on http://localhost:8080 with hot module replacement and other development features enabled.
 
 3. Access the application at `http://localhost:8080`
 
