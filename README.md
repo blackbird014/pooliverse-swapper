@@ -1,3 +1,4 @@
+
 # MiniDex - Minimalist Decentralized Exchange
 
 A simple yet powerful Automated Market Maker (AMM) decentralized exchange built with Solidity and Foundry.
@@ -17,11 +18,19 @@ A simple yet powerful Automated Market Maker (AMM) decentralized exchange built 
 ### Prerequisites
 
 - [Foundry](https://book.getfoundry.sh/getting-started/installation)
+- [MetaMask](https://metamask.io/) or another web3 wallet
 
-### Building
+### Building and Running Contracts
 
 ```bash
+# Build the contracts
 forge build
+
+# Run a local blockchain (in a separate terminal)
+anvil
+
+# Deploy the contracts to the local network
+forge script script/DeployProtocol.s.sol --fork-url http://localhost:8545 --broadcast
 ```
 
 ### Testing
@@ -58,6 +67,43 @@ This will start the Vite development server on http://localhost:8080 with hot mo
 - Swap between tokens
 - View pool statistics and your positions
 - Real-time price updates
+
+### Interacting with MiniDex via MetaMask
+
+1. **Install MetaMask**: Download and set up the [MetaMask extension](https://metamask.io/) for your browser.
+
+2. **Connect to a Local Network**:
+   - Open MetaMask and click on the network dropdown at the top
+   - Select "Add Network" or "Custom RPC"
+   - Enter the following details:
+     - Network Name: `Anvil Local`
+     - RPC URL: `http://localhost:8545`
+     - Chain ID: `31337`
+     - Currency Symbol: `ETH`
+
+3. **Import Test Accounts**:
+   - When you run Anvil, it creates 10 test accounts with 10000 ETH each
+   - In MetaMask, click on your account icon > Import Account
+   - Paste the private key of one of the test accounts
+
+4. **Connect to MiniDex**:
+   - Open the MiniDex frontend
+   - Click "Connect Wallet" and approve the MetaMask connection
+
+5. **Creating a Test Token**:
+   - For testing purposes, you can deploy test ERC20 tokens using Foundry
+   - Run: `forge create test/mocks/ERC20Mock.sol:ERC20Mock --constructor-args "Test Token" "TEST" 18 1000000000000000000000000 --private-key <YOUR_PRIVATE_KEY> --rpc-url http://localhost:8545`
+   - Note the deployed address
+
+6. **Creating Liquidity Pools**:
+   - Use the deployed test token addresses to create new liquidity pools
+   - Approve token spending when prompted by MetaMask
+   - Create the pool and add initial liquidity
+
+7. **Swapping Tokens**:
+   - Select tokens from existing pools
+   - Enter the amount to swap
+   - Approve the transaction in MetaMask
 
 ## Contract Architecture
 
@@ -122,16 +168,21 @@ The protocol is designed to be easily extendable:
 2. Build arbitrage strategies across multiple pools
 3. Add new router contracts for specialized swap types
 
-## Deployment
+## Deployment to a Public Testnet
 
-To deploy the contracts to a live network:
+To deploy the contracts to a public testnet:
+
+1. Create a `.env` file with your API keys and private key
+2. Update the network configuration in the Foundry config
+3. Run the deployment script with the testnet flag
 
 ```bash
-forge create --rpc-url <your_rpc_url> --private-key <your_private_key> src/MiniDexFactory.sol:MiniDexFactory
+forge script script/DeployProtocol.s.sol --rpc-url <testnet_rpc_url> --private-key <your_private_key> --broadcast
 ```
 
-After deploying the factory, you can interact with it through the frontend or directly through contract calls.
+After deployment, update the contract addresses in the frontend configuration to interact with the deployed contracts.
 
 ## Disclaimer
 
 This is a simplified implementation for educational purposes. It has not been audited and should not be used in production without proper security review.
+
