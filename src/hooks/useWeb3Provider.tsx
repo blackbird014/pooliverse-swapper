@@ -71,26 +71,29 @@ export const Web3Provider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     // Setup event listeners for account and chain changes
     if (window.ethereum) {
-      window.ethereum.on('accountsChanged', (accounts: string[]) => {
+      const handleAccountsChanged = (accounts: string[]) => {
         if (accounts.length === 0) {
           disconnectWallet();
         } else {
           setAccount(accounts[0]);
           toast.info("Account changed");
         }
-      });
+      };
 
-      window.ethereum.on('chainChanged', (_chainId: string) => {
+      const handleChainChanged = (_chainId: string) => {
         window.location.reload();
-      });
-    }
+      };
 
-    return () => {
-      if (window.ethereum) {
-        window.ethereum.removeAllListeners('accountsChanged');
-        window.ethereum.removeAllListeners('chainChanged');
-      }
-    };
+      window.ethereum.on('accountsChanged', handleAccountsChanged);
+      window.ethereum.on('chainChanged', handleChainChanged);
+
+      return () => {
+        if (window.ethereum) {
+          window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
+          window.ethereum.removeListener('chainChanged', handleChainChanged);
+        }
+      };
+    }
   }, []);
 
   return (

@@ -8,6 +8,7 @@ import { CreatePool } from "@/components/CreatePool";
 import { AddLiquidity } from "@/components/AddLiquidity";
 import { PoolList } from "@/components/PoolList";
 import { SwapTokens } from "@/components/SwapTokens";
+import { CreateToken } from "@/components/CreateToken";
 import { useWeb3Provider } from "@/hooks/useWeb3Provider";
 
 const Index = () => {
@@ -45,10 +46,11 @@ const Index = () => {
               </Card>
             ) : (
               <Tabs defaultValue="swap" className="w-full">
-                <TabsList className="grid grid-cols-3 mb-8">
+                <TabsList className="grid grid-cols-4 mb-8">
                   <TabsTrigger value="swap">Swap</TabsTrigger>
                   <TabsTrigger value="pool">Add Liquidity</TabsTrigger>
                   <TabsTrigger value="create">Create Pool</TabsTrigger>
+                  <TabsTrigger value="token">Create Token</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="swap">
@@ -89,6 +91,20 @@ const Index = () => {
                     </CardHeader>
                     <CardContent>
                       <CreatePool />
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+                
+                <TabsContent value="token">
+                  <Card className="bg-gray-800 border-gray-700">
+                    <CardHeader>
+                      <CardTitle>Create ERC20 Token</CardTitle>
+                      <CardDescription className="text-gray-400">
+                        Create your own ERC20 token for testing with the DEX
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <CreateToken />
                     </CardContent>
                   </Card>
                 </TabsContent>
