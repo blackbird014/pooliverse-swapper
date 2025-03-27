@@ -31,6 +31,33 @@ forge build
 forge test -vv
 ```
 
+## Frontend Application
+
+The project includes a React-based frontend for interacting with the MiniDex protocol.
+
+### Setting Up the Frontend
+
+1. Install dependencies:
+```bash
+npm install
+```
+
+2. Start the development server:
+```bash
+npm run dev
+```
+
+3. Access the application at `http://localhost:8080`
+
+### Frontend Features
+
+- Connect your Ethereum wallet
+- Create new liquidity pools
+- Add and remove liquidity
+- Swap between tokens
+- View pool statistics and your positions
+- Real-time price updates
+
 ## Contract Architecture
 
 - `MiniDexFactory.sol`: Creates new liquidity pairs and manages pair registry
@@ -93,6 +120,16 @@ The protocol is designed to be easily extendable:
 1. Create new token pairs through the factory
 2. Build arbitrage strategies across multiple pools
 3. Add new router contracts for specialized swap types
+
+## Deployment
+
+To deploy the contracts to a live network:
+
+```bash
+forge create --rpc-url <your_rpc_url> --private-key <your_private_key> src/MiniDexFactory.sol:MiniDexFactory
+```
+
+After deploying the factory, you can interact with it through the frontend or directly through contract calls.
 
 ## Disclaimer
 
