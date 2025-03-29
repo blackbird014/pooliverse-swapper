@@ -18,6 +18,7 @@ contract Router {
     function _getReserves(address tokenA, address tokenB) internal view returns (uint reserveA, uint reserveB) {
         (address token0, address token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
         address pair = MiniDexFactory(factory).getPair(token0, token1);
+        require(pair != address(0), "Router: PAIR_DOES_NOT_EXIST");
         (uint reserve0, uint reserve1,) = MiniDexPair(pair).getReserves();
         (reserveA, reserveB) = tokenA == token0 ? (reserve0, reserve1) : (reserve1, reserve0);
     }
@@ -92,6 +93,7 @@ contract Router {
     ) external returns (uint amountA, uint amountB) {
         require(deadline >= block.timestamp, "Router: EXPIRED");
         address pair = MiniDexFactory(factory).getPair(tokenA, tokenB);
+        require(pair != address(0), "Router: PAIR_DOES_NOT_EXIST");
         
         MiniDexPair(pair).transferFrom(msg.sender, pair, liquidity);
         (amountA, amountB) = MiniDexPair(pair).burn(to);
@@ -116,6 +118,20 @@ contract Router {
         return amounts;
     }
 
+    // Calculate amounts in (added for completeness)
+    function getAmountsIn(uint amountOut, address[] memory path) public view returns (uint[] memory amounts) {
+        require(path.length >= 2, "Router: INVALID_PATH");
+        amounts = new uint[](path.length);
+        amounts[amounts.length - 1] = amountOut;
+        
+        for (uint i = path.length - 1; i > 0; i--) {
+            (uint reserveIn, uint reserveOut) = _getReserves(path[i - 1], path[i]);
+            amounts[i - 1] = _getAmountIn(amounts[i], reserveIn, reserveOut);
+        }
+        
+        return amounts;
+    }
+
     // Swap exact tokens for tokens
     function swapExactTokensForTokens(
         uint amountIn,
@@ -127,15 +143,7 @@ contract Router {
         require(deadline >= block.timestamp, "Router: EXPIRED");
         require(path.length >= 2, "Router: INVALID_PATH");
         
-        amounts = new uint[](path.length);
-        amounts[0] = amountIn;
-        
-        // Calculate amounts out
-        for (uint i = 0; i < path.length - 1; i++) {
-            (uint reserveIn, uint reserveOut) = _getReserves(path[i], path[i + 1]);
-            amounts[i + 1] = _getAmountOut(amounts[i], reserveIn, reserveOut);
-        }
-        
+        amounts = getAmountsOut(amountIn, path);
         require(amounts[amounts.length - 1] >= amountOutMin, "Router: INSUFFICIENT_OUTPUT_AMOUNT");
         
         // Execute swaps
@@ -152,6 +160,15 @@ contract Router {
         uint numerator = amountInWithFee * reserveOut;
         uint denominator = reserveIn * 1000 + amountInWithFee;
         amountOut = numerator / denominator;
+    }
+    
+    function _getAmountIn(uint amountOut, uint reserveIn, uint reserveOut) internal pure returns (uint amountIn) {
+        require(amountOut > 0, "Router: INSUFFICIENT_OUTPUT_AMOUNT");
+        require(reserveIn > 0 && reserveOut > 0, "Router: INSUFFICIENT_LIQUIDITY");
+        
+        uint numerator = reserveIn * amountOut * 1000;
+        uint denominator = (reserveOut - amountOut) * 997;
+        amountIn = numerator / denominator + 1; // +1 to round up
     }
     
     function _swap(uint[] memory amounts, address[] memory path, address _to) internal {
