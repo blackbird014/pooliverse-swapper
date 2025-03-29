@@ -102,6 +102,20 @@ contract Router {
         require(amountB >= amountBMin, "Router: INSUFFICIENT_B_AMOUNT");
     }
 
+    // Calculate amounts out (view function needed by frontend)
+    function getAmountsOut(uint amountIn, address[] memory path) public view returns (uint[] memory amounts) {
+        require(path.length >= 2, "Router: INVALID_PATH");
+        amounts = new uint[](path.length);
+        amounts[0] = amountIn;
+        
+        for (uint i = 0; i < path.length - 1; i++) {
+            (uint reserveIn, uint reserveOut) = _getReserves(path[i], path[i + 1]);
+            amounts[i + 1] = _getAmountOut(amounts[i], reserveIn, reserveOut);
+        }
+        
+        return amounts;
+    }
+
     // Swap exact tokens for tokens
     function swapExactTokensForTokens(
         uint amountIn,

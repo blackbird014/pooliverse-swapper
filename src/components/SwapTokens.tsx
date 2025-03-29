@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,11 +15,13 @@ import ROUTER_ABI from "@/constants/abis/router.json";
 import ERC20_ABI from "@/constants/abis/erc20.json";
 import FACTORY_ABI from "@/constants/abis/factory.json";
 import PAIR_ABI from "@/constants/abis/pair.json";
+import { formatNumber } from "@/lib/utils";
 
 interface TokenInfo {
   address: string;
   symbol: string;
   balance: string;
+  decimals: number;
 }
 
 interface Pool {
@@ -42,28 +45,6 @@ const formSchema = z.object({
     message: "Amount is required",
   }),
 });
-
-// Format number function to handle large numbers more elegantly
-function formatNumber(num: string | number, decimals: number = 2): string {
-  if (typeof num === 'string') {
-    num = parseFloat(num);
-  }
-  
-  // Check for NaN
-  if (isNaN(num)) return "0";
-  
-  // For very large numbers, use compact notation
-  if (num >= 1e9) {
-    return (num / 1e9).toFixed(decimals) + 'B';
-  } else if (num >= 1e6) {
-    return (num / 1e6).toFixed(decimals) + 'M';
-  } else if (num >= 1e3) {
-    return (num / 1e3).toFixed(decimals) + 'K';
-  }
-  
-  // For small numbers, just use fixed notation
-  return num.toFixed(decimals);
-}
 
 export function SwapTokens() {
   const { provider, signer, account } = useWeb3Provider();
@@ -178,13 +159,15 @@ export function SwapTokens() {
           );
           
           const symbol = await tokenContract.symbol();
+          const decimals = await tokenContract.decimals();
           const balanceBN = await tokenContract.balanceOf(account);
-          const balance = ethers.utils.formatUnits(balanceBN, 18);
+          const balance = ethers.utils.formatUnits(balanceBN, decimals);
           
           setTokenInInfo({
             address: watchTokenIn,
             symbol,
-            balance
+            balance,
+            decimals
           });
         } catch (error) {
           console.error("Error getting token in info:", error);
@@ -204,13 +187,15 @@ export function SwapTokens() {
           );
           
           const symbol = await tokenContract.symbol();
+          const decimals = await tokenContract.decimals();
           const balanceBN = await tokenContract.balanceOf(account);
-          const balance = ethers.utils.formatUnits(balanceBN, 18);
+          const balance = ethers.utils.formatUnits(balanceBN, decimals);
           
           setTokenOutInfo({
             address: watchTokenOut,
             symbol,
-            balance
+            balance,
+            decimals
           });
         } catch (error) {
           console.error("Error getting token out info:", error);
@@ -233,17 +218,34 @@ export function SwapTokens() {
       }
 
       try {
+        const tokenInContract = new ethers.Contract(
+          watchTokenIn,
+          ERC20_ABI,
+          provider
+        );
+        
+        const inDecimals = await tokenInContract.decimals();
+        
         const router = new ethers.Contract(
           ROUTER_ADDRESS,
           ROUTER_ABI,
           provider
         );
 
-        const amountIn = ethers.utils.parseUnits(watchAmountIn, 18); // Assuming 18 decimals
+        const amountIn = ethers.utils.parseUnits(watchAmountIn, inDecimals);
         const path = [watchTokenIn, watchTokenOut];
         
+        // Get token out decimals
+        const tokenOutContract = new ethers.Contract(
+          watchTokenOut,
+          ERC20_ABI,
+          provider
+        );
+        
+        const outDecimals = await tokenOutContract.decimals();
+        
         const amounts = await router.getAmountsOut(amountIn, path);
-        const amountOut = ethers.utils.formatUnits(amounts[1], 18); // Assuming 18 decimals
+        const amountOut = ethers.utils.formatUnits(amounts[1], outDecimals);
         
         setExpectedOutput(amountOut);
       } catch (error) {
@@ -265,14 +267,15 @@ export function SwapTokens() {
     try {
       setIsSwapping(true);
       
-      // First approve token
-      const tokenContract = new ethers.Contract(
+      // First get token decimals
+      const tokenInContract = new ethers.Contract(
         values.tokenIn,
         ERC20_ABI,
         signer
       );
-
-      const amountIn = ethers.utils.parseUnits(values.amountIn, 18); // Assuming 18 decimals
+      
+      const decimals = await tokenInContract.decimals();
+      const amountIn = ethers.utils.parseUnits(values.amountIn, decimals);
       
       // Get token symbols for better UX
       let tokenInSymbol = "Token";
@@ -282,7 +285,7 @@ export function SwapTokens() {
       if (tokenOutInfo) tokenOutSymbol = tokenOutInfo.symbol;
       
       toast.info(`Approving ${tokenInSymbol}...`);
-      const approval = await tokenContract.approve(ROUTER_ADDRESS, amountIn);
+      const approval = await tokenInContract.approve(ROUTER_ADDRESS, amountIn);
       await approval.wait();
       
       // Now swap
@@ -412,7 +415,7 @@ export function SwapTokens() {
                     <span>From</span>
                     {tokenInInfo && (
                       <span className="text-sm text-gray-400">
-                        Balance: {formatNumber(tokenInInfo.balance, 4)} {tokenInInfo.symbol}
+                        Balance: {formatNumber(tokenInInfo.balance)} {tokenInInfo.symbol}
                       </span>
                     )}
                   </FormLabel>
@@ -479,7 +482,7 @@ export function SwapTokens() {
                     <span>To</span>
                     {tokenOutInfo && (
                       <span className="text-sm text-gray-400">
-                        Balance: {formatNumber(tokenOutInfo.balance, 4)} {tokenOutInfo.symbol}
+                        Balance: {formatNumber(tokenOutInfo.balance)} {tokenOutInfo.symbol}
                       </span>
                     )}
                   </FormLabel>
@@ -501,7 +504,7 @@ export function SwapTokens() {
                       <Input
                         type="text"
                         placeholder="Expected output"
-                        value={expectedOutput ? formatNumber(expectedOutput, 4) : ""}
+                        value={expectedOutput ? formatNumber(expectedOutput) : ""}
                         disabled
                         className="w-1/3 bg-gray-700 border-gray-600"
                       />
@@ -539,7 +542,7 @@ export function SwapTokens() {
               <div className="flex justify-between items-center">
                 <div className="font-medium">You pay</div>
                 <div>
-                  {watchAmountIn ? formatNumber(watchAmountIn, 2) : "0"} {tokenInInfo.symbol}
+                  {watchAmountIn ? formatNumber(watchAmountIn) : "0"} {tokenInInfo.symbol}
                 </div>
               </div>
               <div className="text-xs text-gray-400 mt-1 overflow-hidden text-ellipsis" title={watchTokenIn}>
@@ -551,7 +554,7 @@ export function SwapTokens() {
               <div className="flex justify-between items-center">
                 <div className="font-medium">You receive</div>
                 <div>
-                  {expectedOutput ? formatNumber(expectedOutput, 2) : "0"} {tokenOutInfo.symbol}
+                  {expectedOutput ? formatNumber(expectedOutput) : "0"} {tokenOutInfo.symbol}
                 </div>
               </div>
               <div className="text-xs text-gray-400 mt-1 overflow-hidden text-ellipsis" title={watchTokenOut}>

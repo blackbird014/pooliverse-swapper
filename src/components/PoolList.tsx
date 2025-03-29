@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { Input } from "@/components/ui/input";
@@ -7,28 +8,7 @@ import { FACTORY_ADDRESS } from "@/constants/addresses";
 import FACTORY_ABI from "@/constants/abis/factory.json";
 import PAIR_ABI from "@/constants/abis/pair.json";
 import ERC20_ABI from "@/constants/abis/erc20.json";
-
-// Format number function to handle large numbers more elegantly
-function formatNumber(num: string | number, decimals: number = 2): string {
-  if (typeof num === 'string') {
-    num = parseFloat(num);
-  }
-  
-  // Check for NaN
-  if (isNaN(num)) return "0";
-  
-  // For very large numbers, use compact notation
-  if (num >= 1e9) {
-    return (num / 1e9).toFixed(decimals) + 'B';
-  } else if (num >= 1e6) {
-    return (num / 1e6).toFixed(decimals) + 'M';
-  } else if (num >= 1e3) {
-    return (num / 1e3).toFixed(decimals) + 'K';
-  }
-  
-  // For small numbers, just use fixed notation
-  return num.toFixed(decimals);
-}
+import { formatNumber } from "@/lib/utils";
 
 interface Pool {
   pairAddress: string;
@@ -36,6 +16,8 @@ interface Pool {
   token1Address: string;
   token0Symbol: string;
   token1Symbol: string;
+  token0Decimals: number;
+  token1Decimals: number;
   reserves: [string, string];
   liquidityUSD: number; // Estimated USD value for sorting
 }
@@ -75,7 +57,7 @@ export function PoolList() {
           const token1Address = await pair.token1();
           const reserves = await pair.getReserves();
           
-          // Get token symbols
+          // Get token symbols and decimals
           const token0 = new ethers.Contract(
             token0Address,
             ERC20_ABI,
@@ -90,11 +72,13 @@ export function PoolList() {
           
           const token0Symbol = await token0.symbol();
           const token1Symbol = await token1.symbol();
+          const token0Decimals = await token0.decimals();
+          const token1Decimals = await token1.decimals();
           
           // Calculate a rough liquidity value (just for sorting purposes)
           // In a real app, you'd use price feeds to get token prices
-          const reserve0 = ethers.utils.formatUnits(reserves[0], 18);
-          const reserve1 = ethers.utils.formatUnits(reserves[1], 18);
+          const reserve0 = ethers.utils.formatUnits(reserves[0], token0Decimals);
+          const reserve1 = ethers.utils.formatUnits(reserves[1], token1Decimals);
           const liquidityUSD = parseFloat(reserve0) * 1 + parseFloat(reserve1) * 1; // Simple estimation
           
           poolsData.push({
@@ -103,9 +87,11 @@ export function PoolList() {
             token1Address,
             token0Symbol,
             token1Symbol,
+            token0Decimals,
+            token1Decimals,
             reserves: [
-              ethers.utils.formatUnits(reserves[0], 18), // Assuming 18 decimals
-              ethers.utils.formatUnits(reserves[1], 18), // Assuming 18 decimals
+              ethers.utils.formatUnits(reserves[0], token0Decimals),
+              ethers.utils.formatUnits(reserves[1], token1Decimals)
             ],
             liquidityUSD,
           });
@@ -171,13 +157,13 @@ export function PoolList() {
                       <div className="flex items-center space-x-2">
                         <span className="text-xs bg-gray-700 px-2 py-1 rounded">{pool.token0Symbol}</span>
                         <span>
-                          {formatNumber(pool.reserves[0], 2)}
+                          {formatNumber(pool.reserves[0])}
                         </span>
                       </div>
                       <div className="flex items-center space-x-2">
                         <span className="text-xs bg-gray-700 px-2 py-1 rounded">{pool.token1Symbol}</span>
                         <span>
-                          {formatNumber(pool.reserves[1], 2)}
+                          {formatNumber(pool.reserves[1])}
                         </span>
                       </div>
                     </div>
