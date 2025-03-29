@@ -27,3 +27,6 @@ lib/forge-std/
 out/
 cache/
 
+# Environment variables
+.env
+

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { Input } from "@/components/ui/input";
@@ -9,6 +8,28 @@ import FACTORY_ABI from "@/constants/abis/factory.json";
 import PAIR_ABI from "@/constants/abis/pair.json";
 import ERC20_ABI from "@/constants/abis/erc20.json";
 
+// Format number function to handle large numbers more elegantly
+function formatNumber(num: string | number, decimals: number = 2): string {
+  if (typeof num === 'string') {
+    num = parseFloat(num);
+  }
+  
+  // Check for NaN
+  if (isNaN(num)) return "0";
+  
+  // For very large numbers, use compact notation
+  if (num >= 1e9) {
+    return (num / 1e9).toFixed(decimals) + 'B';
+  } else if (num >= 1e6) {
+    return (num / 1e6).toFixed(decimals) + 'M';
+  } else if (num >= 1e3) {
+    return (num / 1e3).toFixed(decimals) + 'K';
+  }
+  
+  // For small numbers, just use fixed notation
+  return num.toFixed(decimals);
+}
+
 interface Pool {
   pairAddress: string;
   token0Address: string;
@@ -16,6 +37,7 @@ interface Pool {
   token0Symbol: string;
   token1Symbol: string;
   reserves: [string, string];
+  liquidityUSD: number; // Estimated USD value for sorting
 }
 
 export function PoolList() {
@@ -40,7 +62,7 @@ export function PoolList() {
         const pairCount = await factory.allPairsLength();
         const poolsData: Pool[] = [];
 
-        for (let i = 0; i < Math.min(pairCount.toNumber(), 10); i++) { // Limit to 10 for performance
+        for (let i = 0; i < pairCount.toNumber(); i++) {
           const pairAddress = await factory.allPairs(i);
           
           const pair = new ethers.Contract(
@@ -69,6 +91,12 @@ export function PoolList() {
           const token0Symbol = await token0.symbol();
           const token1Symbol = await token1.symbol();
           
+          // Calculate a rough liquidity value (just for sorting purposes)
+          // In a real app, you'd use price feeds to get token prices
+          const reserve0 = ethers.utils.formatUnits(reserves[0], 18);
+          const reserve1 = ethers.utils.formatUnits(reserves[1], 18);
+          const liquidityUSD = parseFloat(reserve0) * 1 + parseFloat(reserve1) * 1; // Simple estimation
+          
           poolsData.push({
             pairAddress,
             token0Address,
@@ -79,8 +107,12 @@ export function PoolList() {
               ethers.utils.formatUnits(reserves[0], 18), // Assuming 18 decimals
               ethers.utils.formatUnits(reserves[1], 18), // Assuming 18 decimals
             ],
+            liquidityUSD,
           });
         }
+        
+        // Sort pools by liquidity value (highest first)
+        poolsData.sort((a, b) => b.liquidityUSD - a.liquidityUSD);
         
         setPools(poolsData);
       } catch (error) {
@@ -93,7 +125,7 @@ export function PoolList() {
     loadPools();
   }, [provider]);
 
-  // Filter pools by token address
+  // Filter pools by token address or symbol
   const filteredPools = pools.filter(pool => {
     if (!filterToken) return true;
     return pool.token0Address.toLowerCase().includes(filterToken.toLowerCase()) ||
@@ -105,7 +137,7 @@ export function PoolList() {
   return (
     <div className="space-y-4">
       <Input
-        placeholder="Filter by token address or symbol"
+        placeholder="Filter by token symbol or address"
         value={filterToken}
         onChange={(e) => setFilterToken(e.target.value)}
         className="bg-gray-700 border-gray-600"
@@ -116,23 +148,51 @@ export function PoolList() {
       ) : pools.length === 0 ? (
         <div className="text-center py-4">No liquidity pools found</div>
       ) : (
-        <div className="max-h-[400px] overflow-auto">
+        <div className="max-h-[500px] overflow-auto">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Pair</TableHead>
                 <TableHead>Liquidity</TableHead>
+                <TableHead>Addresses</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredPools.map((pool, index) => (
-                <TableRow key={index}>
+                <TableRow key={index} className={index < 5 ? "bg-gradient-to-r from-transparent to-green-950" : ""}>
                   <TableCell className="font-medium">
-                    {pool.token0Symbol}/{pool.token1Symbol}
+                    <div className="flex flex-col">
+                      <span className="text-lg font-semibold text-white">{pool.token0Symbol}/{pool.token1Symbol}</span>
+                      {index < 5 && <span className="text-xs text-green-500">Top Liquidity</span>}
+                    </div>
                   </TableCell>
                   <TableCell>
-                    {pool.reserves[0]} {pool.token0Symbol} <br />
-                    {pool.reserves[1]} {pool.token1Symbol}
+                    <div className="space-y-1">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs bg-gray-700 px-2 py-1 rounded">{pool.token0Symbol}</span>
+                        <span>
+                          {formatNumber(pool.reserves[0], 2)}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs bg-gray-700 px-2 py-1 rounded">{pool.token1Symbol}</span>
+                        <span>
+                          {formatNumber(pool.reserves[1], 2)}
+                        </span>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-xs">
+                    <div className="space-y-1">
+                      <div>
+                        <span className="text-gray-400">{pool.token0Symbol}: </span>
+                        <span className="font-mono text-green-400" title={pool.token0Address}>{pool.token0Address.slice(0, 6)}...{pool.token0Address.slice(-4)}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-400">{pool.token1Symbol}: </span>
+                        <span className="font-mono text-green-400" title={pool.token1Address}>{pool.token1Address.slice(0, 6)}...{pool.token1Address.slice(-4)}</span>
+                      </div>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
